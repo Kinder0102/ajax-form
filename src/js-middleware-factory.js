@@ -1,0 +1,95 @@
+import { STRING_NON_BLANK, FUNCTION, ERROR_CONFIRM } from 'js-common/js-constant'
+import { assert, toArray, isObject, isFunction, isPromise, isNotBlank, isTrue, abortable } from 'js-common/js-utils'
+import { getTargets, showElements, hideElements } from 'js-common/js-dom-utils'
+import { createProperty } from 'js-common/js-dsl-factory'
+
+export default class MiddlewareFactory {
+
+  #middlewares
+
+  constructor() {
+    this.#middlewares = {
+      debug: (...args) => console.log(...args),
+      show: (props, _, payload) => showElements(getTargets(props.target, payload.root)),
+      hide: (props, _, payload) => hideElements(getTargets(props.target, payload.root)),
+      alert: input => alert(input.text),
+      confirm: input => (confirm(input.text) ? Promise.resolve() : Promise.reject(new Error(ERROR_CONFIRM))),
+      prompt: input => {
+        const { text, name } = input
+        const result = prompt(text)
+        return result ? Promise.resolve({ [name]: result, ...input }) : Promise.reject(new Error(ERROR_CONFIRM))
+      },
+      error: err => this.#middlewares.alert({ text: err.message })
+    }
+  }
+
+  add(name, callback) {
+    assert(isNotBlank(name), 1, STRING_NON_BLANK)
+    assert(isFunction(callback), 2, FUNCTION)
+    this.#middlewares[name] = callback
+    return this
+  }
+
+  get(name) {
+    assert(isNotBlank(name), 1, STRING_NON_BLANK)
+    return this.#middlewares[name]
+  }
+
+  create(props, opts = {}) {
+    let result = []
+    for (const prop of createProperty(props)) {
+      const { type: [selectType], skip: skipProps, value, ...params } = prop
+      if (!isNotBlank(selectType))
+        continue
+      const skip = wrapSkip(skipProps)
+      const callback = selectType === FUNCTION ? value[0] : this.#middlewares[selectType]
+      assert(isFunction(callback), `Could not find "${selectType}" in middlewares`)
+      result.push({ callback, skip, params })
+    }
+    return wrapPromise(result, opts)
+  }
+}
+
+function wrapPromise(callbacks, opts) {
+  return async function() {
+    let arg = arguments[0]
+    let updatedArg = arg
+    let promise = abortable(() => Promise.resolve(arg), opts)
+    try {
+      for (const { callback, skip, params } of callbacks) {
+        const shouldSkip = await skip?.apply(this, [ params, updatedArg, opts ])
+        if (shouldSkip)
+          continue
+        promise = promise.then(result => {
+          isObject(result) && (updatedArg = result)
+          return abortable(() => callback.apply(this, [params, updatedArg, opts]), opts)
+        })
+      }
+
+      return promise.then(result => isObject(result) ? result : updatedArg)
+    } catch (error) {
+      return Promise.reject(error)
+    } 
+  }
+}
+
+function wrapSkip(skipProps) {
+  const skipProp = toArray(skipProps)[0]
+  if (isNotBlank(skipProp)) {
+    const skipFunc = window[skipProp]
+    if (isFunction(skipFunc)) {
+      return (...args) => {
+        try {
+          const result = skipFunc(...args)
+          return isPromise(result) ? result : Promise.resolve(result)
+        } catch(error) {
+          return Promise.reject(error)
+        }
+      }
+    } else {
+      return () => Promise.resolve(isTrue(skipProp))
+    }
+  } else {
+    return () => Promise.resolve(false)
+  }
+}
