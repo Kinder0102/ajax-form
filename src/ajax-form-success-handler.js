@@ -164,7 +164,7 @@ function handleUpdateQueryString({ request }, { add, remove, value }) {
   const hasIncludes = includes.size > 0
   const hasExcludes = !hasIncludes && excludes?.size > 0
 
-  objectKeys(request).forEach(key => {
+  objectKeys(request ?? {}).forEach(key => {
     if (hasIncludes ? includes.has(key) : hasExcludes ? !excludes.has(key) : true) {
       const val = request[key]
       if (isArray(val)) {

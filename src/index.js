@@ -630,9 +630,10 @@ export default class AjaxForm {
     const { value, checked, files } = el
     const type = this.#datasetHelper.getValue(el, 'type', el.type)
     switch(type) {
+      case 'month':
       case 'date':
       case 'datetime-local':
-        return isNotBlank(value) ? new Date(value).getTime() : ''
+        return isNotBlank(value) ? new Date(value).getTime() : undefined
       case 'file':
         return el.multiple ? toArray(files) : files[0]
       case 'select-multiple':
