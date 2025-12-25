@@ -640,7 +640,6 @@ export default class AjaxForm {
         return toArray(el.selectedOptions).map(opts => opts.value)
       case HTML_CHECKBOX:
         result = value !== 'on' && value ? (checked ? value : undefined) : checked
-        // result = checked ? (value !== 'on' && value) || true : (multiple ? undefined : false)
         break
       case HTML_RADIO:
         result = checked ? value : undefined
@@ -658,7 +657,7 @@ export default class AjaxForm {
 }
 
 function setNestedValue(obj, name, value) {
-  if (!isObject(obj))
+  if (!hasValue(value) || !isObject(obj))
     return
 
   const keys = isArray(name) ? name : (name.toString().match(/[^.[\]]+/g) || [])
