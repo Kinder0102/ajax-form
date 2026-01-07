@@ -30,7 +30,7 @@ export default class AjaxFormResetHandler {
 function addHandler(cacheBefore = {}, cacheAfter = {}) {
   return (type, callback, after) => {
     assert(isNotBlank(type), 1, STRING_NON_BLANK)
-    assert(isFunction(callback), 1, FUNCTION)
+    assert(isFunction(callback), 2, FUNCTION)
     if (after) {
       cacheAfter[type] = callback
     } else {
@@ -39,7 +39,7 @@ function addHandler(cacheBefore = {}, cacheAfter = {}) {
   }
 }
 
-function clear(el, opts) {
+function clear(el) {
   querySelector('[name]', el).forEach(field => {
     const { type, tagName, disabled } = field
     const tag = tagName.toLowerCase()
@@ -51,10 +51,8 @@ function clear(el, opts) {
     if (type === HTML_CHECKBOX || type === HTML_RADIO)
       field.defaultChecked = false
     if (tag === HTML_SELECT) {
-      const options = field.options
-      for (let i = 0; i < options.length; i++) {
-        options[i].defaultSelected = false
-      }
+      for (let option of field.options)
+        option.defaultSelected = false
       field.selectedIndex = field.multiple ? -1 : 0
     }
   })

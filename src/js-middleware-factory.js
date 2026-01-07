@@ -51,25 +51,20 @@ export default class MiddlewareFactory {
 }
 
 function wrapPromise(callbacks, opts) {
-  return async function() {
+  return async function () {
     let arg = arguments[0]
     let updatedArg = arg
     let promise = abortable(() => Promise.resolve(arg), opts)
-    try {
-      for (const { callback, skip, params } of callbacks) {
-        const shouldSkip = await skip?.apply(this, [ params, updatedArg, opts ])
-        if (shouldSkip)
-          continue
-        promise = promise.then(result => {
-          isObject(result) && (updatedArg = result)
-          return abortable(() => callback.apply(this, [params, updatedArg, opts]), opts)
-        })
-      }
-
-      return promise.then(result => isObject(result) ? result : updatedArg)
-    } catch (error) {
-      return Promise.reject(error)
-    } 
+    for (const { callback, skip, params } of callbacks) {
+      const shouldSkip = await skip?.apply(this, [params, updatedArg, opts])
+      if (shouldSkip)
+        continue
+      promise = promise.then(result => {
+        isObject(result) && (updatedArg = result)
+        return abortable(() => callback.apply(this, [params, updatedArg, opts]), opts)
+      })
+    }
+    return promise.then(result => isObject(result) ? result : updatedArg)
   }
 }
 
@@ -82,7 +77,7 @@ function wrapSkip(skipProps) {
         try {
           const result = skipFunc(...args)
           return isPromise(result) ? result : Promise.resolve(result)
-        } catch(error) {
+        } catch (error) {
           return Promise.reject(error)
         }
       }

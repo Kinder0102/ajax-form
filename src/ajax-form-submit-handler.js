@@ -16,7 +16,7 @@ export default class AjaxFormSubmitHandler {
 
   static add = (type, callback, wrapResponse = false) => {
     assert(isNotBlank(type), 1, STRING_NON_BLANK)
-    assert(isFunction(callback), 1, FUNCTION)
+    assert(isFunction(callback), 2, FUNCTION)
     HANDLERS[type] = { callback, wrapResponse }
   }
 

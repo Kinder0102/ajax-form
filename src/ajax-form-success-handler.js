@@ -23,9 +23,8 @@ import { triggerEvent, getTargets } from 'js-common/js-dom-utils'
 import { createDatasetHelper } from 'js-common/js-dataset-helper'
 import { createProperty } from 'js-common/js-dsl-factory'
 
-const ATTR_KEY = 'success'
 const HANDLERS = {}
-const LIFECYCLES = [ 'before', 'validation', 'request', 'response', 'after', 'error' ]
+const LIFECYCLES = ['before', 'validation', 'request', 'response', 'after', 'error']
 
 addHandler('redirect', handleRedirect)
 addHandler('querystring', handleUpdateQueryString)
@@ -35,22 +34,17 @@ addHandler('event', handleEvent())
 
 export default class AjaxFormSuccessHandler {
 
+  static key = 'success'
   static add = addHandler
 
   #payload
   #handlerProps
-  
+
   constructor(opts = {}) {
     const { handlerProps, ...rest } = opts
-    const datasetHelper = createDatasetHelper(opts.prefix)
+    const datasetHelper = createDatasetHelper(rest.prefix)
     this.#payload = { datasetHelper, ...rest }
-    this.#handlerProps = handlerProps || {}
-    datasetHelper.getKeys(opts.root, ATTR_KEY).forEach(({ key, name }) => {
-      const props = datasetHelper.getValue(opts.root, key, '')
-      const current = this.#handlerProps[name]
-      this.#handlerProps[name] = hasValue(current) ? [...toArray(current), props] : props
-    })
-    
+    this.#handlerProps = datasetHelper.resolveValues(rest.root, AjaxFormSuccessHandler.key, handlerProps)
     for (const lifecycle of LIFECYCLES) {
       this[lifecycle] = (opts, data) => this.#run(lifecycle, opts, data)
     }
@@ -58,7 +52,7 @@ export default class AjaxFormSuccessHandler {
 
   #run(lifecycle, opts, data) {
     objectEntries(opts.property || {}).forEach(([type, props]) => {
-      const { exist, value } = startsWith(type, `${ATTR_KEY}-`)
+      const { exist, value } = startsWith(type, `${AjaxFormSuccessHandler.key}-`)
       exist && (this.#handlerProps[value] = props)
     })
 
@@ -99,7 +93,7 @@ export function handleEvent(defaultEventName) {
 function handleRedirect({ request, response }, { target, type, param }, { basePath }) {
   let url = target?.[0]
 
-  switch(type?.[0]) {
+  switch (type?.[0]) {
     case 'back':
       history.back()
       break
@@ -119,9 +113,9 @@ function handleRedirect({ request, response }, { target, type, param }, { basePa
           const inputValue = findObjectValue(request, key)
           const outputValue = findObjectValue(outputObj, key)
           if (inputValue.exist)
-            url = formatString(url, {[key]: inputValue.value})
+            url = formatString(url, { [key]: inputValue.value })
           if (outputValue.exist)
-            url = formatString(url, {[key]: outputValue.value})
+            url = formatString(url, { [key]: outputValue.value })
         })
         location.href = addBasePath(url, basePath)
       }
@@ -157,7 +151,7 @@ function handleDisplay() {
 
 function handleUpdateQueryString({ request }, { add, remove, value }) {
   const { host, protocol, pathname } = location
-  const includes = new Set([ ...(add || []), ...(value || []) ])
+  const includes = new Set([...(add || []), ...(value || [])])
   const excludes = new Set(remove || [])
   const url = new URL(`${protocol}//${host}${pathname}`)
   const searchParams = url.searchParams
@@ -183,7 +177,7 @@ function handleUpdateQueryString({ request }, { add, remove, value }) {
       }
     }
   })
-  
+
   history.replaceState({ path: url.href }, '', url.href)
 }
 
@@ -192,16 +186,15 @@ function handleStorage(data, { value }, { root, prefix }) {
     return
 
   const elemKey = isElement(root) ? (root.id || root.name || '') : ''
-  const storagePrefix = `${prefix}${isNotBlank(elemKey) ? '-': ''}${elemKey}`
+  const storagePrefix = `${prefix}${isNotBlank(elemKey) ? '-' : ''}${elemKey}`
 
-  let callback = () => {}
   value?.filter(isNotBlank).forEach(key => {
     const storageKey = `${storagePrefix}-${key}`
     if (key === 'timestamp') {
       localStorage.setItem(storageKey, Date.now())
     } else {
       const { exist, value } = findObjectValue(data, key)
-        exist && localStorage.setItem(storageKey, valueToString(value))
+      exist && localStorage.setItem(storageKey, valueToString(value))
     }
   })
 }

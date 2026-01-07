@@ -8,7 +8,7 @@ import {
   formatString
 } from 'js-common/js-utils'
 
-const WITH_DATA_METHOD = [ 'POST', 'PUT', 'PATCH' ]
+const WITH_DATA_METHOD = ['POST', 'PUT', 'PATCH']
 
 export default { request }
 
@@ -20,7 +20,7 @@ function request(opts, input, requestParams) {
   const param = toArray(new URLSearchParams(formData).entries())
     .map(([key, value]) => `${encodeURIComponent(key.replace(/\[\]$/, ''))}=${encodeURIComponent(value)}`)
     .join('&')
-  const urlParam = isWithDataMethod ? '' :  `?${param}`
+  const urlParam = isWithDataMethod ? '' : `?${param}`
   const processedUrl = addBasePath(`${formatString(url, input)}${urlParam}`, basePath)
 
   let contentType = 'application/json;charset=utf-8'
@@ -37,7 +37,7 @@ function request(opts, input, requestParams) {
     }
   }
 
-  if (contentType) 
+  if (contentType)
     headers['Content-Type'] = contentType
   if (isNotBlank(csrf?.header) && isNotBlank(csrf?.token))
     headers[csrf.header] = csrf.token
@@ -47,7 +47,7 @@ function request(opts, input, requestParams) {
     xhr.open(method, processedUrl, true)
     abort?.signal?.addEventListener('abort', () => xhr.abort(), { once: true })
     xhr.onabort = () => reject(new DOMException('Operation aborted', 'AbortError'))
-    
+
     xhr.upload.addEventListener('progress', handleProgress)
     xhr.addEventListener('progress', handleProgress)
     xhr.addEventListener('error', () => reject(({ status, responseText: message } = xhr)))
@@ -65,7 +65,7 @@ function request(opts, input, requestParams) {
       }
     })
 
-    
+
 
     for (const [key, value] of objectEntries(headers)) {
       xhr.setRequestHeader(key, value)
