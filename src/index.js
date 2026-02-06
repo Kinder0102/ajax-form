@@ -58,8 +58,8 @@ const FORM_CLASS_NAME = 'ajax-form'
 const FORM_INIT_CLASS_NAME = `${FORM_CLASS_NAME}-initialized`
 const FORM_APPLY_CLASS_NAME = `${FORM_CLASS_NAME}-apply`
 
-const EVENT_SUBMIT = `submit`
 const EVENT_RESET = `reset`
+const EVENT_SUBMIT = `${FORM_CLASS_NAME}:submit`
 const EVENT_LIFECYCLE_BEFORE = `${FORM_CLASS_NAME}:before`
 const EVENT_LIFECYCLE_INVALID = `${FORM_CLASS_NAME}:invalid`
 const EVENT_LIFECYCLE_REQUEST = `${FORM_CLASS_NAME}:request`
@@ -72,8 +72,6 @@ const EVENT_TRIGGER = `${FORM_CLASS_NAME}:trigger`
 const EVENT_PAGE_UPDATE = `${FORM_CLASS_NAME}:page-update`
 const EVENT_UPLOAD_START = `${FORM_CLASS_NAME}:upload-start`
 const EVENT_UPLOAD_STOP = `${FORM_CLASS_NAME}:upload-stop`
-
-const TRIGGER_CLICKABLE = ['button', 'a']
 
 const UI_CONTROLS = {
   enable: { name: `${FORM_CLASS_NAME}-enable`, enable: true },
@@ -174,7 +172,7 @@ export default class AjaxForm {
     this.#resetHandler = new ResetHandler(this.#root)
     this.#resetHandler.add('empty', this.#successHandler.before)
 
-    registerEvent(this.#root, EVENT_SUBMIT, event => {
+    registerEvent(this.#root, [EVENT_SUBMIT, 'submit'], event => {
       stopDefaultEvent(event)
       this.submitSync()
     })

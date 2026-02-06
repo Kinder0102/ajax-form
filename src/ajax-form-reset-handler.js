@@ -59,5 +59,5 @@ function clear(el) {
 }
 
 function submit(el, opts) {
-  triggerEvent(el, 'submit')
+  triggerEvent(el, 'ajax-form:submit')
 }
