@@ -3,12 +3,15 @@ import {
   assert,
   isFunction,
   isNotBlank,
+  isObject,
   isPromise,
-  toArray
+  toArray,
+  jsonToQueryString
 } from 'js-common/js-utils'
 
 let HANDLERS = {
   bypass: { callback: handleBypass, wrapResponse: true },
+  download: { callback: handleDownload, wrapResponse: true },
   mock: { callback: handleMock, wrapResponse: true },
 }
 
@@ -42,6 +45,16 @@ export default class AjaxFormSubmitHandler {
 
 function handleBypass(opts, input) {
   return { data: input?.item || input }
+}
+
+function handleDownload(opts, input, requestParams) {
+  let url = requestParams.url
+  if (isObject(input))
+    url += `?${jsonToQueryString(input)}`
+
+  const a = document.createElement('a')
+  a.href = url
+  a.click()
 }
 
 function handleMock(opts, input) {

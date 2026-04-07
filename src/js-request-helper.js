@@ -1,11 +1,11 @@
 import {
   isArray,
   isNotBlank,
-  toArray,
   valueToString,
   objectEntries,
   addBasePath,
-  formatString
+  formatString,
+  jsonToQueryString
 } from 'js-common/js-utils'
 
 const WITH_DATA_METHOD = ['POST', 'PUT', 'PATCH']
@@ -17,9 +17,7 @@ function request(opts, input, requestParams) {
   const { formData, hasFile } = objectToFormData(input)
   const { method = 'POST', url, csrf, headers = {}, enctype = '' } = requestParams
   const isWithDataMethod = WITH_DATA_METHOD.includes(method.toUpperCase())
-  const param = toArray(new URLSearchParams(formData).entries())
-    .map(([key, value]) => `${encodeURIComponent(key.replace(/\[\]$/, ''))}=${encodeURIComponent(value)}`)
-    .join('&')
+  const param = jsonToQueryString(input)
   const urlParam = isWithDataMethod ? '' : `?${param}`
   const processedUrl = addBasePath(`${formatString(url, input)}${urlParam}`, basePath)
 
@@ -64,8 +62,6 @@ function request(opts, input, requestParams) {
         reject({ status, message: responseText })
       }
     })
-
-
 
     for (const [key, value] of objectEntries(headers)) {
       xhr.setRequestHeader(key, value)
