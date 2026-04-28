@@ -531,7 +531,7 @@ export default class AjaxForm {
       ...querySelector(this.#datasetToProps('input').value),
       ...querySelector(this.#inputs)
     ]
-    return inputs.filter(el => !el.disabled && isNotBlank(el.name)).reduce((acc, el) => {
+    return inputs.filter(el => !el.matches(':disabled') && isNotBlank(el.name)).reduce((acc, el) => {
       if (isNotBlank(selector)) {
         el.matches(selector) && acc.push(el)
       } else {
