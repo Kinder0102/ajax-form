@@ -626,6 +626,7 @@ function getQuerystring() {
   query.forEach((value, key) => {
     if (!data.hasOwnProperty(key)) {
       const values = query.getAll(key)
+      key = key.replaceAll('.', '\\.')
       data[key] = values.length > 1 ? values : value
     }
   })
@@ -636,7 +637,8 @@ function setNestedValue(obj, name, value) {
   if (!hasValue(value) || !isObject(obj))
     return
 
-  const keys = isArray(name) ? name : (name.toString().match(/[^.[\]]+/g) || [])
+  const keys = (isArray(name) ? name : (name.toString().match(/(?:\\.|[^.[\]])+/g) || []))
+    .map(key => key.replaceAll('\\', ''))
   keys.slice(0, -1).reduce((acc, key, index) => {
     if (Object(acc[key]) === acc[key]) {
       return acc[key]
