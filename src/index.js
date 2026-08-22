@@ -46,6 +46,7 @@ import { createInstanceMap } from 'js-common/js-cache'
 import { createConfig } from 'js-common/js-config'
 import { PluginHost } from 'js-common/js-plugin'
 import DOMHelper from 'js-common/js-dom-helper'
+import ValueProcessor from 'js-common/js-value-processor'
 
 import TriggerHandler from './ajax-form-trigger-handler.js'
 import SubmitHandler from './ajax-form-submit-handler.js'
@@ -84,6 +85,9 @@ const UI_CONTROLS = {
   messageError: { name: `${FORM_CLASS_NAME}-message-error`, show: true },
 }
 
+const INPUT_FROM = 'input-from'
+const INPUT_TYPE = 'input-type'
+
 const WITH = [
   { name: 'append' },
   { name: 'page' },
@@ -99,10 +103,26 @@ const DEFAULT_CONFIG = {
     page: 'page',
     size: 'size',
   },
-  request: {
-    from: {
-      global: key => globalThis[key] ?? key,
-      localStorage: key => localStorage.getItem(key) ?? key
+  valueProcessor: {
+    [INPUT_FROM]: {
+      [ValueProcessor.CONST.TYPE]: {
+        global: (_, key) => globalThis[key] ?? key,
+        localStorage: (_, key) => localStorage.getItem(key) ?? key
+      },
+    },
+    [INPUT_TYPE]: {
+      [ValueProcessor.CONST.FORMAT]: {
+        'millisecond': (value) => {
+          const date = value instanceof Date ? value : new Date(value)
+          return isNaN(date) ? undefined : date.getTime()
+        }
+      },
+      [ValueProcessor.CONST.TRANSFORM]: {
+        'end-of-day': (value) => {
+          const date = value instanceof Date ? value : new Date(value)
+          return isNaN(date) ? value : new Date(date.setHours(23, 59, 59, 999))
+        }
+      }
     }
   },
   response: {
@@ -142,6 +162,8 @@ export default class AjaxForm {
   #config
   #datasetHelper
   #domHelper
+  #inputFromProcessor
+  #inputTypeProcessor
   #with
   #controls
   #inputs
@@ -158,9 +180,23 @@ export default class AjaxForm {
     this.#root.noValidate = true
     this.#config = this.#initConfig(opts.config)
 
-    const { prefix, basePath } = this.#config.get(['prefix', 'basePath'])
+    const {
+      prefix,
+      basePath,
+      valueProcessor
+    } = this.#config.get(['prefix', 'basePath', 'valueProcessor'])
+
     this.#datasetHelper = createDatasetHelper(prefix)
     this.#domHelper = new DOMHelper({ prefix, basePath })
+    this.#inputFromProcessor = new ValueProcessor({
+      prefix, key: INPUT_FROM,
+      handlers: valueProcessor?.[INPUT_FROM]
+    })
+    this.#inputTypeProcessor = new ValueProcessor({
+      prefix, key: INPUT_TYPE,
+      handlers: valueProcessor?.[INPUT_TYPE]
+    })
+
     this.#with = { querystring: { data: getQuerystring() } }
     this.#controls = this.#initUIControls(opts.control)
     this.#inputs = toArray(opts.input)
@@ -208,7 +244,7 @@ export default class AjaxForm {
 
   #initConfig(config = {}) {
     const prefix = AjaxForm.config.prefix || DEFAULT_CONFIG.prefix
-    const props = createProperty(this.#root.dataset[`${prefix}Config`])[0]
+    const props = createProperty(this.#root.dataset[`${prefix}Config`])
     for (const [key, [value] = values] of objectEntries(props)) {
       hasValue(value) && (config[key] = value)
     }
@@ -447,7 +483,7 @@ export default class AjaxForm {
       }
     }
     selectors.forEach((value, selector) => this.#queryFormInput(selector).forEach(el => {
-      const toProps = this.#datasetToProps('to', el)
+      const toProps = this.#datasetToProps('input-to', el)
       const toType = toProps.type[0] ?? toProps?.value[0] ?? 'data'
       this.#with.apply[toType] ||= {}
       this.#with.apply[toType][el.name] = value
@@ -502,7 +538,7 @@ export default class AjaxForm {
   }
 
   #datasetToProps(key, el = this.#root) {
-    return createProperty(this.#datasetHelper.getValue(el, key))[0] ?? {}
+    return createProperty(this.#datasetHelper.getValue(el, key))
   }
 
   #getMiddleware(lifecycle, opts) {
@@ -542,11 +578,10 @@ export default class AjaxForm {
   }
 
   #generateDataAndProps(withParams = []) {
-    const { from } = this.#config.get('request.from')
     const groups = {}
 
     for (const el of this.#queryFormInput()) {
-      const toProps = this.#datasetToProps('to', el)
+      const toProps = this.#datasetToProps('input-to', el)
       const toType = toProps.type[0] ?? toProps?.value[0] ?? 'data'
       const { exist, value } = endsWith(el.name, '[]')
       groups[toType] ||= {}
@@ -576,10 +611,10 @@ export default class AjaxForm {
       for (const [name, el] of objectEntries(group)) {
         let value
         if (isArray(el)) {
-          value = el.flatMap(elem => this.#getElementValue(elem, from)).filter(hasValue)
+          value = el.flatMap(elem => this.#getElementValue(elem)).filter(hasValue)
           value = elementIs(el[0], HTML_RADIO) ? value[0] : value
         } else {
-          value = this.#getElementValue(el, from)
+          value = this.#getElementValue(el)
         }
         setNestedValue(result[type], name, value)
       }
@@ -587,21 +622,17 @@ export default class AjaxForm {
     return deepFilterArrays(result)
   }
 
-  #getElementValue(el, getFrom) {
+  #getElementValue(el) {
     if (!isElement(el))
       return el
     let result
     const { value, checked, files } = el
     const type = this.#datasetHelper.getValue(el, 'type', el.type)
     switch (type) {
-      case 'month':
-      case 'date':
-      case 'datetime-local':
-        return isNotBlank(value) ? new Date(value).getTime() : undefined
       case 'file':
         return el.multiple ? toArray(files) : files[0]
       case 'select-multiple':
-        return toArray(el.selectedOptions).map(opts => opts.value)
+        return toArray(el.selectedOptions).map(opts => opts.value)      
       case HTML_CHECKBOX:
         result = value !== 'on' && value ? (checked ? value : undefined) : checked
         break
@@ -609,14 +640,9 @@ export default class AjaxForm {
         result = checked ? value : undefined
         break
       default:
-        result = el.value
+        result = this.#inputTypeProcessor.process(el, el.value)
     }
-
-    if (result !== undefined) {
-      const { type: [fromType], value: [pattern] } = this.#datasetToProps('from', el)
-      const key = formatString(pattern, result)
-      return getFrom?.[fromType]?.(key) ?? key
-    }
+    return this.#inputFromProcessor.process(el, result)
   }
 }
 

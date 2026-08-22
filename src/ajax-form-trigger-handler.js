@@ -33,7 +33,7 @@ export default class AjaxFormTriggerHandler {
 
   apply() {
     for (const [type, props] of objectEntries(this.#handlerProps))
-      HANDLERS[type]?.(this.#root, createProperty(props)?.[0], this.#submitCallback)
+      HANDLERS[type]?.(this.#root, createProperty(props), this.#submitCallback)
   }
 }
 

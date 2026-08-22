@@ -60,7 +60,9 @@ export default class AjaxFormSuccessHandler {
       const handler = HANDLERS[type]?.[lifecycle]
 
       // TODO merge props from opts
-      createProperty(value).forEach(props => handler?.(data, props, { ...this.#payload, ...opts }))
+      toArray(value)
+        .map(createProperty)
+        .forEach(props => handler?.(data, props, { ...this.#payload, ...opts }))
     }
   }
 }
@@ -127,14 +129,14 @@ function handleDisplay() {
   return {
     before: (_, { target }, { root, domHelper, datasetHelper, ...others }) => {
       getTargets(target, root).forEach(el => {
-        const props = createProperty(datasetHelper.getValue(el, 'template'))[0]
+        const props = createProperty(datasetHelper.getValue(el, 'template'))
         !others.with?.includes('append') && !isTrue(props.append?.[0]) && domHelper.clearElement(el)
       })
     },
     request: ({ request }, { target }, { root, domHelper, datasetHelper }) => {
       const mock = toArray({ length: request?.size || 1 }, () => ({}))
       getTargets(target, root).forEach(el => {
-        const { skeleton: [template] = [] } = createProperty(datasetHelper.getValue(el, 'template'))[0]
+        const { skeleton: [template] = [] } = createProperty(datasetHelper.getValue(el, 'template'))
         isNotBlank(template) && domHelper.setValueToElement(el, mock, { template, group })
       })
     },

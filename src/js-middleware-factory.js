@@ -37,8 +37,9 @@ export default class MiddlewareFactory {
 
   create(props, opts = {}) {
     let result = []
-    for (const prop of createProperty(props)) {
-      const { type: [selectType], skip: skipProps, value, ...params } = prop
+
+    for (const prop of toArray(props)) {
+      const { type: [selectType], skip: skipProps, value, ...params } = createProperty(prop)
       if (!isNotBlank(selectType))
         continue
       const skip = wrapSkip(skipProps)
