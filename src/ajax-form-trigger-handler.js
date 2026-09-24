@@ -1,6 +1,6 @@
 import { STRING_NON_BLANK, FUNCTION } from 'js-common/js-constant'
-import { assert, isFunction, isNotBlank, objectEntries } from 'js-common/js-utils'
-import { querySelector, registerEvent } from 'js-common/js-dom-utils'
+import { assert, isFunction, isNotBlank, isTrue, hasValue, objectEntries } from 'js-common/js-utils'
+import { getTargets, registerEvent } from 'js-common/js-dom-utils'
 import { createProperty } from 'js-common/js-dsl-factory'
 import { createDatasetHelper } from 'js-common/js-dataset-helper'
 
@@ -38,12 +38,21 @@ export default class AjaxFormTriggerHandler {
 }
 
 export function handleEvent(eventName) {
-  return (_, props, callback) => {
+  return (root, props, callback) => {
     if (props?.value?.length > 0)
-      registerEvent(querySelector(props.value), eventName, callback)
+      registerEvent(getTargets(props.value, root), eventName, callback)
   }
 }
 
-function handleAuto(_, props, callback) {
+function handleAuto(root, props, callback) {
+  if (hasValue(props?.condition)) {
+    const condition = globalThis[props.condition]
+    if (isFunction(condition)) {
+      if (!condition(root, props))
+        return
+    } else if (!isTrue(props.condition)) {
+      return
+    }
+  }
   callback({ with: props?.with })
 }
