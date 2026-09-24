@@ -1,6 +1,6 @@
 import { STRING_NON_BLANK, FUNCTION, ERROR_CONFIRM } from 'js-common/js-constant'
 import { assert, toArray, isObject, isFunction, isPromise, isNotBlank, isTrue, abortable } from 'js-common/js-utils'
-import { getTargets, showElements, hideElements } from 'js-common/js-dom-utils'
+import { getTargets, showElements, hideElements, triggerEvent } from 'js-common/js-dom-utils'
 import { createProperty } from 'js-common/js-dsl-factory'
 
 export default class MiddlewareFactory {
@@ -10,8 +10,14 @@ export default class MiddlewareFactory {
   constructor() {
     this.#middlewares = {
       debug: (...args) => console.log(...args),
+      abort: (_1, _2, { abort }) => abort?.abort(),
       show: (props, _, payload) => showElements(getTargets(props.target, payload.root)),
       hide: (props, _, payload) => hideElements(getTargets(props.target, payload.root)),
+      event: ({ target, event, ...props }, data, { root }) => {
+        const events = new Set(event)
+        getTargets(target, root).forEach(el => events.forEach(eventName =>
+          triggerEvent(el, eventName, { ...data, props })))
+      },
       alert: input => alert(input.text),
       confirm: input => (confirm(input.text) ? Promise.resolve() : Promise.reject(new Error(ERROR_CONFIRM))),
       prompt: input => {
