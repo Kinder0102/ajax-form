@@ -22,7 +22,8 @@ import {
   toCamelCase,
   toKebabCase,
   toArray,
-  objectEntries
+  objectEntries,
+  findObjectValue
 } from 'js-common/js-utils'
 
 import {
@@ -73,6 +74,8 @@ const EVENT_TRIGGER = `${FORM_CLASS_NAME}:trigger`
 const EVENT_PAGE_UPDATE = `${FORM_CLASS_NAME}:page-update`
 const EVENT_UPLOAD_START = `${FORM_CLASS_NAME}:upload-start`
 const EVENT_UPLOAD_STOP = `${FORM_CLASS_NAME}:upload-stop`
+
+const ERROR_ABORT = 'Operation aborted'
 
 const UI_CONTROLS = {
   enable: { name: `${FORM_CLASS_NAME}-enable`, enable: true },
@@ -159,6 +162,7 @@ export default class AjaxForm {
     root => new AjaxForm({ root }))
 
   #root
+  #noValidate
   #config
   #datasetHelper
   #domHelper
@@ -177,6 +181,7 @@ export default class AjaxForm {
 
   constructor(opts = {}) {
     this.#root = elementIs(opts.root, 'form') ? opts.root : document.createElement('form')
+    this.#noValidate = this.#root.noValidate
     this.#root.noValidate = true
     this.#config = this.#initConfig(opts.config)
 
@@ -326,7 +331,8 @@ export default class AjaxForm {
   #handleValidation(request, opts) {
     const validation = new Set()
     const attrName = this.#datasetHelper.keyToAttrName('validation')
-    const groups = this.#queryFormInput(`[${attrName}][required]`).reduce((acc, input) => {
+    const formInputs = this.#queryFormInput(`[${attrName}][required]`)
+    const groups = formInputs.reduce((acc, input) => {
       input.setCustomValidity('')
       const group = input.getAttribute(attrName)
       acc[group] ||= []
@@ -335,16 +341,21 @@ export default class AjaxForm {
     }, {})
 
     for (const [group, inputs] of objectEntries(groups)) {
-      if (inputs.some(input => isNotBlank(input.value))) {
+      const checkValue = input => {
+        const value = findObjectValue(this.#with.apply?.data, input.name)
+        return isNotBlank(input.value) || isNotBlank(value.value)
+      }
+      if (inputs.some(checkValue)) {
         inputs.forEach(input => !isNotBlank(input.value) && (input.disabled = true))
       } else {
         inputs[0]?.setCustomValidity(AjaxForm.config.i18n?.validation?.[group] || group)
       }
     }
 
-    this.#queryFormInput().forEach(el => {
-      !el.validity.valid && validation.add(el.name)
-      el.disabled = false
+    formInputs.forEach(el => {
+      if (el.willValidate && !el.validity.valid)
+        validation.add(el.name)
+      el.removeAttribute('disabled')
     })
 
     return this.#getMiddleware('validation', opts)({ request, validation })
@@ -352,7 +363,7 @@ export default class AjaxForm {
       .then(result => {
         result.forEach(validation.add, validation)
 
-        if (validation.size > 0) {
+        if (!this.#noValidate && validation.size > 0) {
           this.#root.reportValidity()
           this.#plugins.broadcast(EVENT_LIFECYCLE_INVALID)
           showElements(this.#controls.messageValidation)
@@ -421,18 +432,20 @@ export default class AjaxForm {
       this.#plugins.broadcast(EVENT_LIFECYCLE_AFTER, data)
       showElements(this.#controls.messageSuccess)
       this.#successHandler.after(opts, data)
+      this.#with = {}
       return data
     })
   }
 
   #handleError(error, opts) {
-    console.error(error)
     switch (error?.message) {
       case ERROR_VALIDATION:
         return
       case ERROR_CONFIRM:
+      case ERROR_ABORT:
         return this.#resetUIControls()
     }
+    console.error(error)
 
     const { getError } = this.#config.get(['response.getError'])
     error = { ...error, message: getError(error) }

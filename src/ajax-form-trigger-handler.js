@@ -1,5 +1,5 @@
 import { STRING_NON_BLANK, FUNCTION } from 'js-common/js-constant'
-import { assert, isFunction, isNotBlank, objectEntries } from 'js-common/js-utils'
+import { assert, isFunction, isNotBlank, isTrue, hasValue, objectEntries } from 'js-common/js-utils'
 import { querySelector, registerEvent } from 'js-common/js-dom-utils'
 import { createProperty } from 'js-common/js-dsl-factory'
 import { createDatasetHelper } from 'js-common/js-dataset-helper'
@@ -44,6 +44,15 @@ export function handleEvent(eventName) {
   }
 }
 
-function handleAuto(_, props, callback) {
+function handleAuto(root, props, callback) {
+  if (hasValue(props?.condition)) {
+    const condition = globalThis[props.condition]
+    if (isFunction(condition)) {
+      if (!condition(root, props))
+        return
+    } else if (!isTrue(props.condition)) {
+      return
+    }
+  }
   callback({ with: props?.with })
 }
