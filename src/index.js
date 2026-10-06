@@ -69,6 +69,7 @@ const EVENT_LIFECYCLE_REQUEST = `${FORM_CLASS_NAME}:request`
 const EVENT_LIFECYCLE_RESPONSE = `${FORM_CLASS_NAME}:response`
 const EVENT_LIFECYCLE_AFTER = `${FORM_CLASS_NAME}:after`
 const EVENT_LIFECYCLE_ERROR = `${FORM_CLASS_NAME}:error`
+const EVENT_LIFECYCLE_FINALLY = `${FORM_CLASS_NAME}:finally`
 const EVENT_ABORT = `${FORM_CLASS_NAME}:abort`
 const EVENT_APPLY = `${FORM_CLASS_NAME}:apply`
 const EVENT_TRIGGER = `${FORM_CLASS_NAME}:trigger`
@@ -242,6 +243,7 @@ export default class AjaxForm {
       .then(({ request, response }) => this.#handleResponse(request, response, options))
       .then(data => this.#handleAfter(data, options))
       .catch(error => this.#handleError(error, options))
+      .then(data => this.#handleFinally(data, options))
   }
 
   submitSync(opts) {
@@ -467,6 +469,10 @@ export default class AjaxForm {
         }
         throw result
       })
+  }
+
+  #handleFinally(data, opts) {
+    return this.#getMiddleware('finally', opts)(data).then(_ => data)
   }
 
   #handleProgress(event = {}) {
