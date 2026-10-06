@@ -567,7 +567,8 @@ export default class AjaxForm {
     const props = this.#datasetHelper.getValue(this.#root, attrName, middleware)
     return AjaxForm.middleware.create(props, {
       root: this.#root,
-      abort: opts.abort
+      abort: opts.abort,
+      domHelper: this.#domHelper
     })
   }
 
