@@ -6,6 +6,7 @@ import { createDatasetHelper } from 'js-common/js-dataset-helper'
 
 let HANDLERS = {
   auto: handleAuto,
+  on: handleOn,
   click: handleEvent('click'),
   change: handleEvent('change'),
 }
@@ -42,6 +43,10 @@ export function handleEvent(eventName) {
     if (props?.value?.length > 0)
       registerEvent(getTargets(props.value, root), eventName, callback)
   }
+}
+
+function handleOn(root, props, callback) {
+  registerEvent(root, props.value, callback)
 }
 
 function handleAuto(root, props, callback) {
