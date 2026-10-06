@@ -142,7 +142,6 @@ function handleDisplay() {
     },
     response: (data, { target }, { root, domHelper, datasetHelper }) => {
       getTargets(target, root).forEach(el => {
-        domHelper.clearElement(el, group)
         const key = datasetHelper.getValue(el, 'value')
         const { value, exist } = findObjectValue(data, key)
         domHelper.setValueToElement(el, exist ? value : data.response)

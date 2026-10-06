@@ -18,7 +18,6 @@ import {
   isElement,
   endsWith,
   delay,
-  formatString,
   toCamelCase,
   toKebabCase,
   toArray,
@@ -431,11 +430,11 @@ export default class AjaxForm {
   }
 
   #handleAfter(data, opts) {
+    this.#with = {}
     return this.#getMiddleware('after', opts)(data).then(_ => {
       this.#plugins.broadcast(EVENT_LIFECYCLE_AFTER, data)
       showElements(this.#controls.messageSuccess)
       this.#successHandler.after(opts, data)
-      this.#with = {}
       return data
     })
   }
@@ -567,7 +566,8 @@ export default class AjaxForm {
     const props = this.#datasetHelper.getValue(this.#root, attrName, middleware)
     return AjaxForm.middleware.create(props, {
       root: this.#root,
-      abort: opts.abort
+      abort: opts.abort,
+      domHelper: this.#domHelper
     })
   }
 
