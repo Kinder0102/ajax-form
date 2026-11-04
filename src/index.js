@@ -501,12 +501,17 @@ export default class AjaxForm {
         selectors.set(`[${attrName}="${FORM_APPLY_CLASS_NAME}-${type}"]`, applyData)
       }
     }
-    selectors.forEach((value, selector) => this.#queryFormInput(selector).forEach(el => {
-      const toProps = this.#datasetToProps('input-to', el)
-      const toType = toProps.type[0] ?? toProps?.value[0] ?? 'data'
-      this.#with.apply[toType] ||= {}
-      this.#with.apply[toType][el.name] = value
-    }))
+    
+    selectors.forEach((value, selector) => {
+      for (const el of this.#root.elements) {
+        if (el.matches(selector)) {
+          const toProps = this.#datasetToProps('input-to', el)
+          const toType = toProps.type[0] ?? toProps?.value[0] ?? 'data'
+          this.#with.apply[toType] ||= {}
+          this.#with.apply[toType][el.name] = value
+        }
+      }
+    })
   }
 
   #handleEventTriggered(event) {

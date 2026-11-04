@@ -11,7 +11,7 @@ import {
 
 let HANDLERS = {
   bypass: { callback: handleBypass, wrapResponse: true },
-  download: { callback: handleDownload, wrapResponse: true },
+  redirect: { callback: handleRedirect, wrapResponse: true },
   mock: { callback: handleMock, wrapResponse: true },
 }
 
@@ -47,12 +47,14 @@ function handleBypass(opts, input) {
   return { data: input?.item || input }
 }
 
-function handleDownload(opts, input, requestParams) {
+function handleRedirect({ property }, input, requestParams) {
   let url = requestParams.url
   if (isObject(input))
     url += `?${jsonToQueryString(input)}`
 
   const a = document.createElement('a')
+  if (isNotBlank(property?.target))
+    a.setAttribute('target', property.target)
   a.href = url
   a.click()
 }
